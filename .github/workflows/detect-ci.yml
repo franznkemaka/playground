@@ -1,8 +1,8 @@
-name: CI
+name: Detect CI
 
 on:
     push:
-        branches: [main]
+        branches: [main-disabled]
 
 jobs:
     detect:
