@@ -1,11 +1,12 @@
 name: Detox Android CI
 
 on:
-    - push:
-          - branches: [main]
+    push:
+        branches: [main]
 
 jobs:
-    build:
+    ci:
+        name: Detox Android CI
         runs-on: ubuntu-latest
 
         steps:
@@ -14,14 +15,32 @@ jobs:
               with:
                   clean: false
 
-            - name: Node
-              users: actions/setup-node@v1
+            - name: Setup Java
+              uses: actions/setup-java@v1
+              with:
+                  java-version: '8'
+                  java-package: jdk
+                  architecture: x64
 
-            - name: Download Android Emulator Image
+            - name: Node
+              uses: actions/setup-node@v1
+
+            - name: Install Emulator Image
               run: |
-                  echo "y" | $ANDROID_HOME/tools/bin/sdkmanager --install "system-images;android-29;google_apis;x86"
-                  echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd --force --name emu --device "Nexus 5X" -k 'system-images;android-29;google_apis;x86'
-                  $ANDROID_HOME/emulator/emulator -list-avds
+                  echo y | $ANDROID_HOME/tools/bin/sdkmanager --update
+                  echo y | $ANDROID_HOME/tools/bin/sdkmanager --install "system-images;android-29;default;x86"
+
+            - name: Create Emulator
+              run: |
+                  $ANDROID_HOME/tools/bin/sdkmanager --update 
+                  echo "no" | $ANDROID_HOME/tools/bin/avdmanager --verbose create avd --force --name "test" --package "system-images;android-29;default;x86" --tag "default" --abi "x86"
+
+            - name: Change Emulator location
+              run: |
+                  rm -rf $ANDROID_HOME/emulator/emulator
+
+            - name: Install pulseaudio
+              run: sudo apt-get install pulseaudio
 
             - name: Install dependencies
               run: |
@@ -31,19 +50,12 @@ jobs:
             - name: Build for Detox
               run: |
                   cd packages/app
+                  cd android && chmod +x ./gradlew
+                  cd ..
                   yarn e2e:build:ci
-            
-              - name: Android Emulator
-                timeout-minutes: 10
-                continue-on-error: true
-                run: |
-                  echo "Starting emulator"
-                  nohup $ANDROID_HOME/emulator/emulator -avd emu -no-audio -no-snapshot -no-window &
-                  $ANDROID_HOME/platform-tools/adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed | tr -d '\r') ]]; do sleep 1; done; input keyevent 82'
-                  $ANDROID_HOME/platform-tools/adb devices
-                  echo "Emulator started"
 
-              - name: Android Detox
-                run: |
-                  yarn start
+            - name: Android Detox
+              run: |
+                  export ANDROID_SDK_ROOT=$ANDROID_HOME
+                  cd packages/app
                   yarn e2e:ci
