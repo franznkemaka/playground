@@ -8,6 +8,8 @@
         "start": "react-native start",
         "e2e": "detox test --configuration android",
         "e2e:build": "detox build --configuration android",
+        "e2e:ci": "detox test --configuration android.ci",
+        "e2e:build:ci": "detox build --configuration android.ci",
         "test": "jest",
         "lint": "eslint ."
     },
